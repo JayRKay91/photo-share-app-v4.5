@@ -1,0 +1,22 @@
+# Byte-compiled / temporary files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+
+# Environment variables / secrets
+.env
+
+# Uploaded content (photos, videos)
+uploads/
+
+# SQLite database (optional — depends if you want to track it)
+*.sqlite3
+app.db
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+".env" 

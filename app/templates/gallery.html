@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Photo Gallery</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/gallery.css') }}">
+</head>
+<body>
+  <div class="layout-wrapper">
+    <header class="page-header">
+      <h1>Photo Gallery</h1>
+
+      <button class="btn btn-primary"
+              onclick="location.href='{{ url_for('main.upload') }}'">
+        ➕ Upload New Photo
+      </button>
+
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('main.logout') }}"
+           class="btn btn-secondary ms-2">
+          Logout
+        </a>
+      {% endif %}
+    </header>
+
+    <section class="controls sticky-search">
+      <form action="{{ url_for('main.index') }}" method="get" class="search-form">
+        <input
+          type="search"
+          name="search"
+          placeholder="Search by filename, description, album, or tag…"
+          value="{{ search_query }}"
+          aria-label="Search gallery"
+        >
+        <button type="submit" class="btn btn-secondary">🔍</button>
+      </form>
+    </section>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flashes">
+          {% for category, msg in messages %}
+            <li class="flash-{{ category }}">{{ msg }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <main class="gallery-grid">
+      {% for img in images %}
+        <figure class="gallery-item card">
+          {% if img.type == 'video' %}
+            <div class="media-wrapper">
+              <img
+                src="{{ url_for('main.thumbnail', filename=img.thumb.split('/')[-1]) }}"
+                alt="Thumbnail for {{ img.filename }}"
+                class="clickable"
+                data-full="{{ url_for('main.uploaded_file', filename=img.filename) }}"
+                data-type="video"
+                onerror="handleError(this)"
+              >
+              <div class="play-overlay" aria-hidden="true">►</div>
+            </div>
+          {% else %}
+            <img
+              src="{{ url_for('main.uploaded_file', filename=img.filename) }}"
+              alt="{{ img.description or img.filename }}"
+              class="clickable"
+              data-full="{{ url_for('main.uploaded_file', filename=img.filename) }}"
+              data-type="image"
+              onerror="handleError(this)"
+            >
+          {% endif %}
+
+          <div class="caption">
+            <!-- Description -->
+            <form action="{{ url_for('main.update_description', filename=img.filename) }}"
+                  method="post" class="desc-form">
+              <textarea
+                name="description"
+                rows="2"
+                placeholder="Add a description…"
+                aria-label="Description for {{ img.filename }}"
+              >{{ img.description }}</textarea>
+              <button type="submit" class="btn btn-secondary">💾 Save</button>
+            </form>
+
+            <!-- Tags -->
+            <div class="tags">
+              {% for tag in img.tags %}
+                <span class="tag-label">
+                  <a href="{{ url_for('main.index', tag=tag|lower) }}">📌 {{ tag }}</a>
+                  <button type="button"
+                  class="btn-icon tag-delete-btn"
+                  data-form="remove-{{ img.filename }}-{{ tag }}"
+                  aria-label="Remove tag {{ tag }}">
+            ❌
+          </button>
+          <form id="remove-{{ img.filename }}-{{ tag }}"
+                action="{{ url_for('main.remove_tag', filename=img.filename, tag=tag) }}"
+                method="post" hidden></form>
+          
+                  <form action="{{ url_for('main.rename_tag_single') }}"
+                        method="post" class="rename-single-form">
+                    <input type="hidden" name="filename" value="{{ img.filename }}">
+                    <input type="hidden" name="old_tag" value="{{ tag }}">
+                    <input type="text" name="new_tag"
+                           placeholder="Rename…" maxlength="30"
+                           aria-label="New name for tag {{ tag }}">
+                    <button type="submit" class="btn-icon">✏️</button>
+                  </form>
+                </span>
+              {% endfor %}
+              <form action="{{ url_for('main.add_tag', filename=img.filename) }}"
+                    method="post" class="add-tag-form">
+                <input type="text" name="tag"
+                       placeholder="Add tag…" maxlength="30"
+                       aria-label="Add tag to {{ img.filename }}">
+                <button type="submit" class="btn btn-icon">➕</button>
+              </form>
+            </div>
+
+            <!-- Comments Display -->
+            <div class="comments">
+              {% for comment in img.comments %}
+                <p class="comment-item">{{ comment }}</p>
+              {% endfor %}
+            </div>
+
+            <!-- Add Comment Form -->
+            <form action="{{ url_for('main.add_comment', filename=img.filename) }}"
+                  method="post" class="add-comment-form">
+              {% if shared_accesses %}
+                <select name="owner_id" class="owner-select">
+                  <option value="{{ current_user.id }}">My Gallery</option>
+                  {% for access in shared_accesses %}
+                    <option value="{{ access.owner.id }}">
+                      {{ access.owner.username }}’s Gallery (as {{ access.alias }})
+                    </option>
+                  {% endfor %}
+                </select>
+              {% else %}
+                <input type="hidden" name="owner_id" value="{{ current_user.id }}">
+              {% endif %}
+              <input type="text" name="comment"
+                     placeholder="Add a comment…" maxlength="200"
+                     aria-label="Add comment to {{ img.filename }}" required>
+              <button type="submit" class="btn btn-secondary">💬 Comment</button>
+            </form>
+
+            <div class="actions">
+              <a href="{{ url_for('main.download_image', filename=img.filename) }}"
+                 class="btn btn-secondary"
+                 aria-label="Download {{ img.filename }}">
+                ⬇️ Download
+              </a>
+              <form action="{{ url_for('main.delete_image', filename=img.filename) }}"
+                    method="post" onsubmit="return confirm('Delete {{ img.filename }}?');"
+                    class="inline-form">
+                <button type="submit" class="btn btn-danger">🗑️ Delete</button>
+              </form>
+            </div>
+          </div>
+        </figure>
+      {% else %}
+        <p class="empty">No photos yet—be the first to upload one!</p>
+      {% endfor %}
+    </main>
+  </div>
+
+  <!-- Corrected Lightbox Overlay -->
+  <div id="preview" class="lightbox-overlay" style="display: none;" onclick="closePreview()">
+    <button id="prevBtn" class="lightbox-arrow lightbox-arrow-left" aria-label="Previous">&#8592;</button>
+
+    <div class="preview-box" onclick="event.stopPropagation()">
+      <!-- Enlarged media will be inserted here -->
+    </div>
+
+    <button id="nextBtn" class="lightbox-arrow lightbox-arrow-right" aria-label="Next">&#8594;</button>
+
+    <button class="close-btn" aria-label="Close" onclick="closePreview()">×</button>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/gallery.js') }}"></script>
+</body>
+</html>
