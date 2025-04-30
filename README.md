@@ -1,70 +1,109 @@
-# 📸 Photo Share App – Version 3
+📸 Photo Share App — Version 4.5 (In Progress)
+A personal and private photo- and video-sharing app built with Flask.
+Upload, manage, tag, and comment on photos with support for user accounts, albums, and more — all stored locally.
 
-This is version 3 of the **Photo Share App**, a lightweight Flask-based media sharing platform designed for private image and video hosting. This version builds upon version 2 with cleaner code, improved organization, and new usability features.
+🚀 Current Features (v4.5)
+✅ Core Functionality
+User account creation, login, logout
 
----
+Per-user photo and video storage
 
-## ✅ Features So Far
+Description fields per image
 
-- 📁 **Albums Support**: Users can group media into albums using a dropdown menu. Albums are stored and managed via a JSON-based system.
-- 🏷️ **Tags System**: Each photo/video can have one or more tags. A tag sidebar and search function allow users to filter the gallery.
-- 🔍 **Search Bar**: The search bar can search across:
-  - Tags
-  - Descriptions
-  - Filenames
-- 📌 **Sticky Search Bar**: The search bar remains fixed at the top of the page while scrolling for easier navigation.
-- 🧹 **Cleaner Code Refactor**: Updated project structure and code using insights from the `04-mini-high` model to improve logic, readability, and performance.
-- 🖼️ **Image + Video Gallery**: Uploads support popular image formats (`.jpg`, `.png`, `.webp`, `.heic`, etc.) and videos (`.mp4`, `.mov`, `.avi`, etc.).
-- 🎞️ **Thumbnails**: Automatically generated thumbnails for both images and videos.
-- 💬 **Comments + Descriptions**: Each media item supports optional text fields and user-added comments.
+Optional image resizing & thumbnail generation
 
----
+Image and video preview with lightbox (keyboard + click navigation)
 
-## 📂 Project Structure
+✅ Tag System
+Add tags to images
 
-photo-share-app-v3/ ├── app/ │ ├── static/ │ ├── templates/ │ ├── init.py │ └── ... (route and helper modules) ├── run.py ├── requirements.txt └── README.md
+Rename tags (with confirmation message)
 
-yaml
+Delete tags:
+
+Instant AJAX-based deletion
+
+No page reload
+
+Form fallback included
+
+✅ Comments
+Add comments to each image
+
+Display name of commenter
+
+Comments persist across reloads
+
+✅ Download & Delete
+One-click image/video download
+
+Delete images (with confirmation prompt)
+
+✅ Gallery Search
+Search by filename, tag, or description
+
+✅ UI/UX
+Sticky search bar
+
+Responsive mobile layout
+
+Polished lightbox arrow navigation (keyboard & button support)
+
+Feedback messages for most user actions
+
+🧱 Project Setup
+✅ Requirements
+Python 3.9+
+
+Flask
+
+Jinja2
+
+SQLite (used by default)
+
+venv for virtual environment
+
+📦 Setup Instructions
+bash
 Copy
 Edit
+# Clone the repo
+git clone https://github.com/your-username/photo-share-app.git
+cd photo-share-app
 
----
+# Set up a virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-## 🛠 Tech Stack
+# Install dependencies
+pip install -r requirements.txt
 
-- **Flask** (Python)
-- **HTML5 + CSS3**
-- **MoviePy** (video thumbnails)
-- **Pillow / pillow-heif** (image support incl. HEIC)
-- **Gunicorn** (for production server, e.g., Render deployment)
+# Run the app
+python run.py
+App runs at:
+📍 http://127.0.0.1:5000
 
----
+Optional: set debug=True in run.py for development
 
-## 🚀 Deployment
+🔄 Remaining 4.5 Features (To Be Completed)
 
-Currently deployed on [Render](https://render.com), using:
-```bash
-gunicorn run:app
-🧪 Next Steps / In Progress
- Lightbox-style view for enlarging images/videos
+Feature	Status
+🛠 Fix Tag Delete (Basic)	✅ Done
+⚡ Upgrade Tag Delete to AJAX	✅ Done
+➕ Album Creation (custom names)	⏳ In Progress
+📂 Default Album Suggestions (e.g., Vacation, Family, Pets)	⏳ Planned
+🖼 Show album name in gallery	⏳ Planned
+🔮 Looking Ahead (v5+)
+Shared access (allow “Mom” to upload to your gallery)
 
- Audio/voice note attachments
+Upload and comment permission settings per user
 
- Image download button
+Email verification & password reset
 
- Folder-like album navigation
+Admin panel for user and content moderation
 
- Tag rename/edit/delete tools
+Album filtering and gallery views
 
-vbnet
-Copy
-Edit
+Upload approval toggle for shared users
 
----
-
-Would you like me to:
-1. Write the terminal commands to add and push this file to GitHub?
-2. Add a “version history” section with v1 and v2 summaries too?
-3. Convert it to HTML or reStructuredText format for fancier documentation?
-
-Let me know what else you'd like to include!
+Native mobile companion app
