@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Albums</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/gallery.css') }}">
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <h2 class="sidebar-heading">Media</h2>
+      <nav>
+        <ul>
+          <li><a href="{{ url_for('main.index') }}">Gallery</a></li>
+          <li><a href="{{ url_for('main.albums') }}" class="active">Albums</a></li>
+          <li><a href="#">Shared</a></li>
+          <li><a href="#">Archive</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <div class="layout-wrapper content">
+      <header class="page-header">
+        <h1>My Albums</h1>
+        <div class="album-create-container">
+          <button id="show-album-form" class="btn btn-primary">➕ Create Album</button>
+          <form id="album-form"
+                action="{{ url_for('main.create_album') }}"
+                method="post"
+                style="display: none; margin-top: 0.5rem;"
+          >
+            <input
+              type="text"
+              name="album_name"
+              maxlength="50"
+              placeholder="Album name"
+              required
+              style="padding: 0.5rem; font-size: 1rem;"
+            >
+            <button type="submit" class="btn btn-primary" style="margin-left: 0.5rem;">Save</button>
+            <button type="button" id="cancel-album-form" class="btn btn-secondary" style="margin-left: 0.25rem;">Cancel</button>
+          </form>
+        </div>
+      </header>
+
+      <main class="album-grid">
+        {% for album in albums_data %}
+          <div class="album-card">
+            <div class="album-preview">
+              {# Show up to 5 thumbnails #}
+              {% for thumb in album.thumbnails[:5] %}
+                <img src="{{ thumb }}" alt="Preview {{ loop.index }}">
+              {% endfor %}
+            </div>
+            <div class="album-info">
+              <h3>{{ album.title }}</h3>
+              <p>{{ album.photos }} photos · {{ album.videos }} videos</p>
+              <button class="favorite-toggle" title="Favorite">☆</button>
+            </div>
+          </div>
+        {% else %}
+          <p>No albums found.</p>
+        {% endfor %}
+      </main>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/gallery.js') }}"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const showBtn = document.getElementById("show-album-form");
+      const form    = document.getElementById("album-form");
+      const cancel  = document.getElementById("cancel-album-form");
+
+      showBtn.addEventListener("click", function() {
+        form.style.display = form.style.display === "none" ? "flex" : "none";
+        if (form.style.display === "flex") {
+          form.querySelector("input").focus();
+        }
+      });
+
+      cancel.addEventListener("click", function() {
+        form.style.display = "none";
+      });
+    });
+  </script>
+</body>
+</html>

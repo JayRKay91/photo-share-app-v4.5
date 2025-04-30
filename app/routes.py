@@ -16,18 +16,18 @@ from .models import db, User, SharedAccess
 main = Blueprint("main", __name__)
 
 # —— Configuration Constants —— #
-BASE_DIR = Path(__file__).parent.parent
-UPLOAD_BASE     = BASE_DIR / 'uploads'
-DATA_DIR        = BASE_DIR
-DESCRIPTION_PATH = DATA_DIR / "descriptions.json"
-ALBUM_PATH       = DATA_DIR / "albums.json"
-COMMENTS_PATH    = DATA_DIR / "comments.json"
-TAGS_PATH        = DATA_DIR / "tags.json"
-THUMB_FOLDER     = BASE_DIR / "app" / "static" / "thumbnails"
-THUMB_SIZE_WIDTH = 320
+BASE_DIR          = Path(__file__).parent.parent
+UPLOAD_BASE       = BASE_DIR / 'uploads'
+DATA_DIR          = BASE_DIR
+DESCRIPTION_PATH  = DATA_DIR / "descriptions.json"
+ALBUM_PATH        = DATA_DIR / "albums.json"
+COMMENTS_PATH     = DATA_DIR / "comments.json"
+TAGS_PATH         = DATA_DIR / "tags.json"
+THUMB_FOLDER      = BASE_DIR / "app" / "static" / "thumbnails"
+THUMB_SIZE_WIDTH  = 320
 
-IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "bmp", "webp", "heic"}
-VIDEO_EXTENSIONS = {"mp4", "mov", "avi", "mkv"}
+IMAGE_EXTENSIONS  = {"png", "jpg", "jpeg", "gif", "bmp", "webp", "heic"}
+VIDEO_EXTENSIONS  = {"mp4", "mov", "avi", "mkv"}
 ALLOWED_EXTENSIONS = IMAGE_EXTENSIONS | VIDEO_EXTENSIONS
 
 # ensure directories exist
@@ -166,6 +166,82 @@ def index():
     )
 
 
+@main.route("/albums")
+@login_required
+def albums():
+    """Albums view: dynamically list albums with counts and preview thumbnails."""
+    # Load filename→album mapping
+    albums_map = load_json(ALBUM_PATH)
+
+    # Get the current user's upload folder and list their media files
+    UPLOAD_FOLDER = user_folder(current_user.id)
+    media_files = sorted(
+        [f for f in UPLOAD_FOLDER.iterdir() if f.is_file() and allowed_file(f.name)],
+        key=lambda p: p.stat().st_mtime,
+        reverse=True
+    )
+
+    # Determine unique album titles
+    album_titles = sorted(set(albums_map.values()), key=str.lower)
+
+    # Prepare grouping dict (even albums with no files)
+    grouped = {title: [] for title in album_titles}
+
+    for f in media_files:
+        fn = f.name
+        title = albums_map.get(fn, "")
+        if title in grouped:
+            grouped[title].append(f)
+
+    # Build the albums_data list
+    albums_data = []
+    for title in album_titles:
+        files = grouped.get(title, [])
+        photos = sum(1 for f in files if f.suffix.lstrip('.').lower() in IMAGE_EXTENSIONS)
+        videos = sum(1 for f in files if f.suffix.lstrip('.').lower() in VIDEO_EXTENSIONS)
+
+        # Generate up to 5 thumbnail URLs
+        thumbnails = []
+        for f in files[:5]:
+            ext = f.suffix.lstrip('.').lower()
+            if ext in VIDEO_EXTENSIONS:
+                thumb_url = url_for('main.thumbnail', filename=f"{f.stem}.jpg")
+            else:
+                thumb_url = url_for('main.uploaded_file', filename=f.name)
+            thumbnails.append(thumb_url)
+
+        albums_data.append({
+            "title": title,
+            "photos": photos,
+            "videos": videos,
+            "thumbnails": thumbnails
+        })
+
+    return render_template("albums.html", albums_data=albums_data)
+
+
+@main.route("/create_album", methods=["POST"])
+@login_required
+def create_album():
+    """Create a new empty album entry."""
+    name = request.form.get("title", "").strip()
+    if not name:
+        flash("Album name cannot be empty.", "error")
+    elif len(name) > 50:
+        flash("Album name must be 50 characters or fewer.", "error")
+    else:
+        albums_map = load_json(ALBUM_PATH)
+        existing = set(albums_map.values())
+        if name in existing:
+            flash(f"Album '{name}' already exists.", "info")
+        else:
+            # Register the new album by adding a dummy mapping
+            albums_map[name] = name
+            save_json(ALBUM_PATH, albums_map)
+            flash(f"Album '{name}' created.", "success")
+    return redirect(url_for("main.albums"))
+
+
 @main.route("/upload", methods=["GET", "POST"])
 @login_required
 def upload():
@@ -241,7 +317,6 @@ def upload():
         flash('Upload successful.', 'success')
         return redirect(url_for('main.index'))
 
-    # GET
     return render_template('upload.html')
 
 
