@@ -63,9 +63,9 @@
       <div class="form-group">
         <label for="album">Choose an album:</label>
         <select name="album" id="album">
-          <option value="">-- No Album --</option>
-          {% for album in albums %}
-            <option value="{{ album }}">{{ album }}</option>
+          <option value="">-- Select an Album --</option>
+          {% for title in album_titles %}
+            <option value="{{ title }}">{{ title }}</option>
           {% endfor %}
         </select>
       </div>

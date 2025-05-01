@@ -89,7 +89,50 @@ document.addEventListener('DOMContentLoaded', () => {
       navigate(1);
     });
   }
+
+  // ⭐ Favorite album toggle with backend persistence
+  document.querySelectorAll(".favorite-toggle").forEach(button => {
+    button.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const album = this.dataset.album;
+      if (!album) {
+        console.error("No album specified on button");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('album', album);
+
+      fetch('/toggle_favorite_album', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => {
+        if (!response.ok) throw new Error("Network response was not ok");
+        return response.json();
+      })
+      .then(data => {
+        if (data.status === "success") {
+          if (data.action === "favorited") {
+            this.classList.add("favorited");
+            this.textContent = "★";
+          } else {
+            this.classList.remove("favorited");
+            this.textContent = "☆";
+          }
+        } else {
+          console.error("Toggle favorite error:", data.message);
+        }
+      })
+      .catch(err => {
+        console.error("Fetch error in favoriting:", err);
+      });
+    });
+  });
 });
+
 document.addEventListener('click', function (e) {
   if (e.target.matches('.tag-delete-btn')) {
     e.preventDefault();

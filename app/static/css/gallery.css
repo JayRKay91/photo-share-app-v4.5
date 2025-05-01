@@ -377,3 +377,59 @@ body {
       margin-left: 240px;
   }
 }
+
+/* Favorite (star) button styles */
+.favorite-toggle {
+  font-size: 1.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s ease, transform 0.2s ease;
+  color: #999; /* default gray */
+}
+
+.favorite-toggle:hover {
+  transform: scale(1.1);
+  color: #facc15; /* soft yellow on hover */
+}
+
+.favorite-toggle.favorited {
+  color: #facc15; /* bright yellow when favorited */
+}
+
+/* Album preview constraints & hover-based cycling */
+.album-preview {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  overflow: hidden;
+}
+
+.album-preview .preview-item {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: 100px;
+  max-height: 100px;
+  object-fit: cover;
+  opacity: 0;
+  animation: preview-cycle 6s infinite both;
+  animation-play-state: paused;
+}
+
+.album-preview .preview-item:first-child {
+  opacity: 1;
+}
+
+.album-preview .preview-item:nth-child(1) { animation-delay: 0s; }
+.album-preview .preview-item:nth-child(2) { animation-delay: 2s; }
+.album-preview .preview-item:nth-child(3) { animation-delay: 4s; }
+
+.album-card:hover .album-preview .preview-item {
+  animation-play-state: running;
+}
+
+@keyframes preview-cycle {
+  0%, 33.33%   { opacity: 1; }
+  33.34%, 100% { opacity: 0; }
+}

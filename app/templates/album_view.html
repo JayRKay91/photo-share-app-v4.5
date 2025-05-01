@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ album_title }} – Album</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/gallery.css') }}">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <h2 class="sidebar-heading">Media</h2>
+      <nav>
+        <ul>
+          <li><a href="{{ url_for('main.index') }}">Gallery</a></li>
+          <li><a href="{{ url_for('main.albums') }}">Albums</a></li>
+          <li><a href="#">Shared</a></li>
+          <li><a href="#">Archive</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="layout-wrapper content">
+      <header class="page-header">
+        <h1>{{ album_title }}</h1>
+        <a href="{{ url_for('main.albums') }}" class="btn btn-secondary">← Back to Albums</a>
+      </header>
+
+      <main class="gallery-grid">
+        {% for item in media_items %}
+          <figure class="gallery-item card">
+            {% if item.type == 'video' %}
+              <div class="media-wrapper">
+                <img
+                  src="{{ url_for('main.thumbnail', filename=item.thumb_filename) }}"
+                  alt="Thumbnail for {{ item.filename }}"
+                  class="clickable"
+                  data-full="{{ url_for('main.uploaded_file', filename=item.filename) }}"
+                  data-type="video"
+                  onerror="handleError(this)">
+                <div class="play-overlay" aria-hidden="true">►</div>
+              </div>
+            {% else %}
+              <img
+                src="{{ url_for('main.uploaded_file', filename=item.filename) }}"
+                alt="{{ item.description or item.filename }}"
+                class="clickable"
+                data-full="{{ url_for('main.uploaded_file', filename=item.filename) }}"
+                data-type="image"
+                onerror="handleError(this)">
+            {% endif %}
+
+            <div class="caption">
+              {% if item.description %}
+                <p class="description">{{ item.description }}</p>
+              {% endif %}
+
+              {% if item.tags %}
+                <div class="tags">
+                  {% for tag in item.tags %}
+                    <span class="tag-label">
+                      📌 <a href="{{ url_for('main.index', tag=tag|lower) }}">{{ tag }}</a>
+                    </span>
+                  {% endfor %}
+                </div>
+              {% endif %}
+
+              {% if item.comments %}
+                <div class="comments">
+                  {% for comment in item.comments %}
+                    <p class="comment-item">{{ comment }}</p>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          </figure>
+        {% else %}
+          <p class="empty">This album is empty.</p>
+        {% endfor %}
+      </main>
+    </div>
+  </div>
+
+  <!-- Lightbox Overlay (optional, reuses existing) -->
+  <div id="preview" class="lightbox-overlay" style="display:none;" onclick="closePreview()">
+    <button id="prevBtn" class="lightbox-arrow lightbox-arrow-left" aria-label="Previous">&#8592;</button>
+    <div class="preview-box" onclick="event.stopPropagation()"></div>
+    <button id="nextBtn" class="lightbox-arrow lightbox-arrow-right" aria-label="Next">&#8594;</button>
+    <button class="close-btn" aria-label="Close" onclick="closePreview()">×</button>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/gallery.js') }}"></script>
+</body>
+</html>

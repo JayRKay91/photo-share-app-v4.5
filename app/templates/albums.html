@@ -32,7 +32,7 @@
           >
             <input
               type="text"
-              name="album_name"
+              name="title"
               maxlength="50"
               placeholder="Album name"
               required
@@ -46,19 +46,29 @@
 
       <main class="album-grid">
         {% for album in albums_data %}
-          <div class="album-card">
+          <a href="{{ url_for('main.view_album', album_title=album.title|urlencode) }}" class="album-card">
             <div class="album-preview">
-              {# Show up to 5 thumbnails #}
-              {% for thumb in album.thumbnails[:5] %}
-                <img src="{{ thumb }}" alt="Preview {{ loop.index }}">
+              {# Show up to 3 thumbnails, hide all but first by default #}
+              {% for thumb in album.thumbnails[:3] %}
+                <img
+                  src="{{ thumb }}"
+                  alt="Preview {{ loop.index }}"
+                  class="preview-item{% if not loop.first %} hidden{% endif %}"
+                >
               {% endfor %}
             </div>
             <div class="album-info">
               <h3>{{ album.title }}</h3>
               <p>{{ album.photos }} photos · {{ album.videos }} videos</p>
-              <button class="favorite-toggle" title="Favorite">☆</button>
+              <button
+                class="favorite-toggle {% if album.title in favorites %}favorited{% endif %}"
+                data-album="{{ album.title }}"
+                title="Favorite"
+              >
+                {% if album.title in favorites %}★{% else %}☆{% endif %}
+              </button>
             </div>
-          </div>
+          </a>
         {% else %}
           <p>No albums found.</p>
         {% endfor %}

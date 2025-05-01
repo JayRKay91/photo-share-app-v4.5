@@ -4,7 +4,8 @@ import uuid
 from pathlib import Path
 from flask import (
     Blueprint, render_template, request, redirect,
-    url_for, flash, current_app, send_from_directory, abort
+    url_for, flash, current_app, send_from_directory,
+    abort, jsonify
 )
 from werkzeug.utils import secure_filename
 from PIL import Image
@@ -96,7 +97,6 @@ def logout():
 @login_required
 def index():
     """Gallery view: shows current user's media plus galleries they've been shared."""
-    # Load metadata
     descs    = load_json(DESCRIPTION_PATH)
     albums   = load_json(ALBUM_PATH)
     comments = load_json(COMMENTS_PATH)
@@ -148,10 +148,12 @@ def index():
 
     all_tags = sorted({t for lst in tags.values() for t in lst}, key=str.lower)
 
-    # Shared-access entries for comment/upload form selections
     shared_accesses = SharedAccess.query.filter_by(
         shared_user_id=current_user.id
     ).all()
+
+    favorites_map = load_json(ALBUM_PATH).get("favorites", {})
+    user_favorites = favorites_map.get(str(current_user.id), [])
 
     return render_template(
         "gallery.html",
@@ -162,7 +164,8 @@ def index():
         all_tags=all_tags,
         current_tag=tag_filter,
         search_query=search_query,
-        shared_accesses=shared_accesses
+        shared_accesses=shared_accesses,
+        favorites=user_favorites
     )
 
 
@@ -170,10 +173,9 @@ def index():
 @login_required
 def albums():
     """Albums view: dynamically list albums with counts and preview thumbnails."""
-    # Load filename→album mapping
-    albums_map = load_json(ALBUM_PATH)
+    raw_data = load_json(ALBUM_PATH)
+    albums_map = {k: v for k, v in raw_data.items() if k != "favorites"}
 
-    # Get the current user's upload folder and list their media files
     UPLOAD_FOLDER = user_folder(current_user.id)
     media_files = sorted(
         [f for f in UPLOAD_FOLDER.iterdir() if f.is_file() and allowed_file(f.name)],
@@ -181,10 +183,7 @@ def albums():
         reverse=True
     )
 
-    # Determine unique album titles
-    album_titles = sorted(set(albums_map.values()), key=str.lower)
-
-    # Prepare grouping dict (even albums with no files)
+    album_titles = sorted({v for v in albums_map.values()}, key=str.lower)
     grouped = {title: [] for title in album_titles}
 
     for f in media_files:
@@ -193,22 +192,19 @@ def albums():
         if title in grouped:
             grouped[title].append(f)
 
-    # Build the albums_data list
     albums_data = []
     for title in album_titles:
         files = grouped.get(title, [])
         photos = sum(1 for f in files if f.suffix.lstrip('.').lower() in IMAGE_EXTENSIONS)
         videos = sum(1 for f in files if f.suffix.lstrip('.').lower() in VIDEO_EXTENSIONS)
 
-        # Generate up to 5 thumbnail URLs
         thumbnails = []
         for f in files[:5]:
             ext = f.suffix.lstrip('.').lower()
             if ext in VIDEO_EXTENSIONS:
-                thumb_url = url_for('main.thumbnail', filename=f"{f.stem}.jpg")
+                thumbnails.append(url_for('main.thumbnail', filename=f"{f.stem}.jpg"))
             else:
-                thumb_url = url_for('main.uploaded_file', filename=f.name)
-            thumbnails.append(thumb_url)
+                thumbnails.append(url_for('main.uploaded_file', filename=f.name))
 
         albums_data.append({
             "title": title,
@@ -217,35 +213,98 @@ def albums():
             "thumbnails": thumbnails
         })
 
-    return render_template("albums.html", albums_data=albums_data)
+    favorites_map = raw_data.get("favorites", {})
+    user_favorites = favorites_map.get(str(current_user.id), [])
+
+    return render_template("albums.html", albums_data=albums_data, favorites=user_favorites)
+
+
+@main.route("/album/<album_title>")
+@login_required
+def view_album(album_title):
+    """Show all media in a specific album for the current user."""
+    descs    = load_json(DESCRIPTION_PATH)
+    albums   = load_json(ALBUM_PATH)
+    comments = load_json(COMMENTS_PATH)
+    tags     = load_json(TAGS_PATH)
+
+    UPLOAD_FOLDER = user_folder(current_user.id)
+    media_files = sorted(
+        [
+            f for f in UPLOAD_FOLDER.iterdir()
+            if f.is_file()
+            and allowed_file(f.name)
+            and albums.get(f.name) == album_title
+        ],
+        key=lambda p: p.stat().st_mtime,
+        reverse=True
+    )
+
+    media = []
+    for path in media_files:
+        fn  = path.name
+        ext = path.suffix.lstrip('.').lower()
+        media_type = "video" if ext in VIDEO_EXTENSIONS else "image"
+        thumb = (
+            url_for('main.thumbnail', filename=f"{path.stem}.jpg")
+            if media_type == "video"
+            else url_for('main.uploaded_file', filename=fn)
+        )
+        media.append({
+            "filename": fn,
+            "description": descs.get(fn, ""),
+            "tags": tags.get(fn, []),
+            "comments": comments.get(fn, []),
+            "type": media_type,
+            "thumb": thumb
+        })
+
+    return render_template(
+        "album_view.html",
+        album_title=album_title,
+        media_items=media
+    )
 
 
 @main.route("/create_album", methods=["POST"])
 @login_required
 def create_album():
-    """Create a new empty album entry."""
+    """Create a new empty album entry, preserving favorites."""
     name = request.form.get("title", "").strip()
     if not name:
         flash("Album name cannot be empty.", "error")
     elif len(name) > 50:
         flash("Album name must be 50 characters or fewer.", "error")
     else:
-        albums_map = load_json(ALBUM_PATH)
+        data = load_json(ALBUM_PATH)
+        favorites = data.get("favorites")
+        albums_map = {k: v for k, v in data.items() if k != "favorites"}
         existing = set(albums_map.values())
+
         if name in existing:
             flash(f"Album '{name}' already exists.", "info")
         else:
-            # Register the new album by adding a dummy mapping
             albums_map[name] = name
-            save_json(ALBUM_PATH, albums_map)
+            new_data = dict(albums_map)
+            if favorites is not None:
+                new_data["favorites"] = favorites
+            save_json(ALBUM_PATH, new_data)
             flash(f"Album '{name}' created.", "success")
+
     return redirect(url_for("main.albums"))
 
 
 @main.route("/upload", methods=["GET", "POST"])
 @login_required
 def upload():
-    """Upload handler: shared or owner uploads with alias tagging."""
+    """Upload handler: shared or owner uploads with alias tagging,
+       plus album selection and new-album creation support."""
+    shared_accesses = SharedAccess.query.filter_by(
+        shared_user_id=current_user.id
+    ).all()
+    albums_map = load_json(ALBUM_PATH)
+    album_titles = sorted({v for k, v in albums_map.items() if k != "favorites"}, key=str.lower)
+
     if request.method == "POST":
         owner_id = int(request.form.get("owner_id", current_user.id))
         if owner_id != current_user.id:
@@ -261,6 +320,8 @@ def upload():
 
         files = request.files.getlist("photos")
         album = request.form.get("album", "").strip()
+        new_album = request.form.get("new_album", "").strip()
+        chosen_album = new_album or album
 
         descs    = load_json(DESCRIPTION_PATH)
         albums   = load_json(ALBUM_PATH)
@@ -276,7 +337,6 @@ def upload():
                 filename = f"{uuid.uuid4().hex}.{ext}"
                 save_path = UPLOAD_FOLDER / filename
 
-                # HEIC conversion
                 if ext == 'heic':
                     try:
                         hf = pillow_heif.read_heif(file.stream)
@@ -291,7 +351,6 @@ def upload():
                 else:
                     file.save(str(save_path))
 
-                # Video thumbnail
                 if ext in VIDEO_EXTENSIONS:
                     thumb_file = THUMB_FOLDER / f"{save_path.stem}.jpg"
                     try:
@@ -299,14 +358,12 @@ def upload():
                     except Exception as e:
                         flash(f"Thumbnail failed for {filename}: {e}", 'error')
 
-                # Metadata initialization
-                if album:
-                    albums[filename] = album
+                if chosen_album:
+                    albums[filename] = chosen_album
                 descs.setdefault(filename, "")
                 comments.setdefault(filename, [])
                 tags.setdefault(filename, [])
 
-                # Mark upload
                 comments[filename].insert(0, f"Uploaded by {uploader_alias}")
 
         save_json(DESCRIPTION_PATH, descs)
@@ -317,7 +374,11 @@ def upload():
         flash('Upload successful.', 'success')
         return redirect(url_for('main.index'))
 
-    return render_template('upload.html')
+    return render_template(
+        'upload.html',
+        shared_accesses=shared_accesses,
+        album_titles=album_titles
+    )
 
 
 @main.route("/add_tag/<filename>", methods=["POST"])
@@ -518,7 +579,6 @@ def share():
 @main.route("/uploads/<filename>")
 @login_required
 def uploaded_file(filename):
-    """Serve user's uploaded file securely."""
     fn = sanitize_filename(filename)
     user_dir = user_folder(current_user.id)
     return send_from_directory(str(user_dir), fn)
@@ -527,6 +587,32 @@ def uploaded_file(filename):
 @main.route("/thumbnails/<filename>")
 @login_required
 def thumbnail(filename):
-    """Serve thumbnail securely."""
     fn = sanitize_filename(filename)
     return send_from_directory(str(THUMB_FOLDER), fn)
+
+
+@main.route("/toggle_favorite_album", methods=["POST"])
+@login_required
+def toggle_favorite_album():
+    """Toggle favorite status for an album for the current user."""
+    album = request.form.get("album", "").strip()
+    if not album:
+        return jsonify({"status": "error", "message": "No album specified"}), 400
+
+    data = load_json(ALBUM_PATH)
+    favorites = data.get("favorites", {})
+    user_id_str = str(current_user.id)
+    user_favs = favorites.get(user_id_str, [])
+
+    if album in user_favs:
+        user_favs.remove(album)
+        action = "unfavorited"
+    else:
+        user_favs.append(album)
+        action = "favorited"
+
+    favorites[user_id_str] = user_favs
+    data["favorites"] = favorites
+    save_json(ALBUM_PATH, data)
+
+    return jsonify({"status": "success", "action": action})

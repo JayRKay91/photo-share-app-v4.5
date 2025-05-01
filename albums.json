@@ -1,1 +1,37 @@
-{}
+{
+  "test": "test",
+  "try": "try",
+  "yay": "yay",
+  "uno": "uno",
+  "test1": "test1",
+  "43734a20a53a4c4b812a77588df65ef1.png": "test",
+  "6841ba0e0ff54b598992b9d4885ddef3.jpg": "test",
+  "08ae086d4e7b447c83eb1c540b7feb95.jpg": "test",
+  "ae4c2b1652284e5ca12af7f52a4ce490.jpg": "test",
+  "c53e9c41f2dd45468ac7b0be5e44a731.mp4": "test",
+  "7c4c7125f21a46c1bcf03d0663b9ea61.jpg": "test",
+  "9fc2dacedb9d40e39e8b3921f0f969e2.jpg": "test",
+  "73e87448b59e427383b7600d363acdc7.jpg": "test",
+  "group": "group",
+  "favorites": {
+    "1": [
+      "try",
+      "yay",
+      "test",
+      "uno",
+      "test1"
+    ]
+  },
+  "510c51c65dd343f29c757784f32f51e2.jpg": "group",
+  "a96964ae895e439285a5ce6605a29d6e.png": "group",
+  "8f779c44b3e5432e8ae0d93dce28d0d4.jpg": "group",
+  "4b4f42b8663346e0a6655013d2c72dbd.jpg": "group",
+  "34d3db5a60fc456585f42a29ee60da7c.jpg": "group",
+  "9e5b95920914481cabb27f6f5463a182.mp4": "group",
+  "e2d5536345424dfc84821c6ff521feff.jpg": "group",
+  "9239da3b746c414ab504118ecc3177ea.jpg": "group",
+  "ce4cc0ffd32c4e83b78263e6e4642cda.jpg": "group",
+  "c315350ac0d04778a876c1c70e8047ce.jpg": "uno",
+  "06409694c2d24d58b0e6b4eba1384969.png": "uno",
+  "aa1d287dffa844799a5f783a6fadb276.png": "uno"
+}
