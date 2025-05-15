@@ -20,6 +20,18 @@
   --color-muted: #999999;
 }
 
+/* Dark Theme Overrides */
+body.dark {
+  --color-bg: #121212;
+  --color-card: #1e1e1e;
+  --color-primary: #90a4fc;
+  --color-primary-dark: #6c7ae0;
+  --color-secondary: #aaaaaa;
+  --color-danger: #ff6b6b;
+  --color-text: #e0e0e0;
+  --color-muted: #888888;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);
@@ -161,22 +173,31 @@ body {
 }
 
 /* Gallery grid & cards */
-.gallery-grid {
+.album-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+  padding: 1rem;
+  justify-content: center;
   margin: 0;
-  padding: 0;
 }
-.gallery-item.card {
-  border: none;
+.album-card {
+  position: relative;
+  max-width: 280px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
 }
+
+/* Card styling */
 .card {
   background: var(--color-card);
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
   overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
 }
 .card:hover {
   transform: translateY(-4px);
@@ -188,36 +209,43 @@ body {
   display: block;
 }
 
-/* Media wrapper & play overlay */
-.media-wrapper {
-  position: relative;
+/* Card layout and spacing */
+.card > .media-wrapper {
+  flex-shrink: 0;
 }
-.play-overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 48px;
-  color: #fff;
-  background-color: rgba(0,0,0,0.4);
-  border-radius: 50%;
-  padding: 10px 15px;
-  pointer-events: none;
+
+.card > .desc-form,
+.card > .tags,
+.card > .uploaded-by,
+.card > .comment-form,
+.card > .actions {
+  padding: 0 1rem;
 }
 
 /* Description form */
+.desc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
 .desc-form textarea {
   width: 100%;
   box-sizing: border-box;
-  margin-top: 0.75rem;
   border: 1px solid var(--color-muted);
   border-radius: 4px;
   padding: 0.5rem;
 }
+.desc-form button {
+  align-self: flex-start;
+  padding: 0.5rem 1rem;
+}
 
 /* Tags */
 .tags {
-  margin-top: 0.75rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
   font-size: 0.9em;
 }
 .tag-label {
@@ -234,20 +262,6 @@ body {
   margin-right: 0.25rem;
 }
 
-/* Rename single tag */
-.rename-single-form input {
-  width: 60px;
-  font-size: 0.8em;
-  margin-left: 4px;
-  border: 1px solid var(--color-muted);
-  border-radius: 4px;
-  padding: 2px 4px;
-}
-.rename-single-form button {
-  font-size: 0.8em;
-  margin-left: 4px;
-}
-
 /* Add tag form */
 .add-tag-form {
   display: flex;
@@ -262,13 +276,40 @@ body {
 .add-tag-form button {
   margin-left: 0;
   border-radius: 0 4px 4px 0;
+  padding: 0 0.75rem;
+}
+
+/* Uploaded by line */
+.uploaded-by {
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  margin-bottom: 0.75rem;
+}
+
+/* Comment form */
+.comment-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.comment-form input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid var(--color-muted);
+  border-radius: 4px;
+}
+.comment-form button {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
 }
 
 /* Actions */
 .actions {
-  margin-top: 0.75rem;
   display: flex;
   gap: 0.5rem;
+  justify-content: flex-start;
+  padding-bottom: 1rem;
 }
 
 /* Empty state */
@@ -278,7 +319,7 @@ body {
   margin-top: 2rem;
 }
 
-/* Lightbox overlay (updated section starts) */
+/* Lightbox overlay */
 #preview {
   display: none;
   position: fixed;
@@ -304,7 +345,7 @@ body {
   box-shadow: 0 0 15px rgba(0,0,0,0.5);
 }
 
-/* Corrected Close button */
+/* Close button */
 .close-btn {
   position: absolute;
   top: 20px;
@@ -322,7 +363,7 @@ body {
   opacity: 1;
 }
 
-/* Corrected Lightbox arrows */
+/* Lightbox arrows */
 .lightbox-arrow {
   background: none;
   border: none;
@@ -349,32 +390,32 @@ body {
 /* Responsive */
 @media (max-width: 600px) {
   .lightbox-arrow {
-      font-size: 2rem;
+    font-size: 2rem;
   }
   .close-btn {
-      font-size: 2rem;
+    font-size: 2rem;
   }
 }
 @media (max-width: 768px) {
   .app-container {
-      flex-direction: column;
+    flex-direction: column;
   }
   .sidebar {
-      position: relative;
-      transform: translateX(0);
-      width: 100%;
-      box-shadow: none;
+    position: relative;
+    transform: translateX(0);
+    width: 100%;
+    box-shadow: none;
   }
   .sidebar.collapsed {
-      transform: translateX(0);
+    transform: translateX(0);
   }
   .content {
-      padding-top: 1rem;
+    padding-top: 1rem;
   }
 }
 @media (min-width: 769px) {
   .content {
-      margin-left: 240px;
+    margin-left: 240px;
   }
 }
 
@@ -385,16 +426,14 @@ body {
   border: none;
   cursor: pointer;
   transition: color 0.2s ease, transform 0.2s ease;
-  color: #999; /* default gray */
+  color: #999;
 }
-
 .favorite-toggle:hover {
   transform: scale(1.1);
-  color: #facc15; /* soft yellow on hover */
+  color: #facc15;
 }
-
 .favorite-toggle.favorited {
-  color: #facc15; /* bright yellow when favorited */
+  color: #facc15;
 }
 
 /* Album preview constraints & hover-based cycling */
@@ -404,7 +443,6 @@ body {
   height: 100px;
   overflow: hidden;
 }
-
 .album-preview .preview-item {
   position: absolute;
   top: 0;
@@ -416,20 +454,101 @@ body {
   animation: preview-cycle 6s infinite both;
   animation-play-state: paused;
 }
-
 .album-preview .preview-item:first-child {
   opacity: 1;
 }
-
 .album-preview .preview-item:nth-child(1) { animation-delay: 0s; }
 .album-preview .preview-item:nth-child(2) { animation-delay: 2s; }
 .album-preview .preview-item:nth-child(3) { animation-delay: 4s; }
-
 .album-card:hover .album-preview .preview-item {
   animation-play-state: running;
 }
-
 @keyframes preview-cycle {
   0%, 33.33%   { opacity: 1; }
   33.34%, 100% { opacity: 0; }
+}
+
+/* Edit-mode & Icon Styling */
+.delete-album-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--color-danger);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+  cursor: pointer;
+  display: none;
+  transition: transform 0.2s ease;
+}
+.delete-album-btn:hover {
+  transform: scale(1.1);
+}
+.rename-album-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  font-size: 1rem;
+  display: none;
+  transition: transform 0.2s ease;
+}
+.rename-album-btn:hover {
+  transform: scale(1.1);
+}
+.edit-mode .delete-album-btn {
+  display: block !important;
+}
+.edit-mode .rename-album-btn {
+  display: inline-block !important;
+}
+.edit-mode .album-card {
+  border: 1px dashed var(--color-secondary);
+  background-color: rgba(255, 250, 204, 0.3);
+}
+.image-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  justify-items: center;
+}
+.image-gallery-grid img,
+.image-gallery-grid video {
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  border-radius: 6px;
+  object-fit: cover;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+/* Theme toggle button */
+.theme-toggle {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--color-primary, #4f46e5);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  z-index: 9999;
+  font-size: 1rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Ensure dark mode variables override light ones */
+body.dark {
+  --color-bg: #121212;
+  --color-card: #1e1e1e;
+  --color-primary: #90a4fc;
+  --color-primary-dark: #6c7ae0;
+  --color-secondary: #aaaaaa;
+  --color-danger: #ff6b6b;
+  --color-text: #e0e0e0;
+  --color-muted: #888888;
 }

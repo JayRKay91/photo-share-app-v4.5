@@ -2,6 +2,7 @@ import os
 import json
 import uuid
 from pathlib import Path
+from urllib.parse import quote, unquote  # added to handle encoding/decoding of album titles
 from flask import (
     Blueprint, render_template, request, redirect,
     url_for, flash, current_app, send_from_directory,
@@ -228,13 +229,24 @@ def view_album(album_title):
     comments = load_json(COMMENTS_PATH)
     tags     = load_json(TAGS_PATH)
 
+    # decode and normalize the album title for case-insensitive matching
+    decoded_title = unquote(album_title).strip().lower()
+    actual_album_title = next(
+        (v for v in albums.values() if isinstance(v, str) and v.strip().lower() == decoded_title),
+        None
+    )
+
+    if not actual_album_title:
+        flash(f"No album found named '{unquote(album_title)}'", "error")
+        return redirect(url_for("main.albums"))
+
     UPLOAD_FOLDER = user_folder(current_user.id)
     media_files = sorted(
         [
             f for f in UPLOAD_FOLDER.iterdir()
             if f.is_file()
             and allowed_file(f.name)
-            and albums.get(f.name) == album_title
+            and albums.get(f.name) == actual_album_title
         ],
         key=lambda p: p.stat().st_mtime,
         reverse=True
@@ -261,7 +273,8 @@ def view_album(album_title):
 
     return render_template(
         "album_view.html",
-        album_title=album_title,
+        # pass the decoded, actual album title so spaces render correctly
+        album_title=actual_album_title,
         media_items=media
     )
 
@@ -284,6 +297,7 @@ def create_album():
         if name in existing:
             flash(f"Album '{name}' already exists.", "info")
         else:
+            # adding a placeholder mapping so the album shows even if empty
             albums_map[name] = name
             new_data = dict(albums_map)
             if favorites is not None:
@@ -303,7 +317,10 @@ def upload():
         shared_user_id=current_user.id
     ).all()
     albums_map = load_json(ALBUM_PATH)
-    album_titles = sorted({v for k, v in albums_map.items() if k != "favorites"}, key=str.lower)
+    album_titles = sorted(
+        {v for k, v in albums_map.items() if k != "favorites"},
+        key=str.lower
+    )
 
     if request.method == "POST":
         owner_id = int(request.form.get("owner_id", current_user.id))
@@ -616,3 +633,81 @@ def toggle_favorite_album():
     save_json(ALBUM_PATH, data)
 
     return jsonify({"status": "success", "action": action})
+
+
+@main.route("/delete_album", methods=["POST"])
+@login_required
+def delete_album():
+    data = request.get_json()
+    album_title = data.get("album_title", "").strip()
+    print(f"delete_album called with album_title='{album_title}', current_user='{current_user.username}'")
+
+    if not album_title:
+        return jsonify({"error": "Missing album title"}), 400
+
+    # Load albums.json
+    try:
+        with open(ALBUM_PATH, "r") as f:
+            albums = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        albums = {}
+
+    # Remove all media entries with the matching album title
+    albums_to_keep = {
+        k: v for k, v in albums.items()
+        if v != album_title and k != "favorites"
+    }
+
+    # Preserve favorites
+    favorites = albums.get("favorites", {})
+    uid = str(current_user.id)
+    if uid in favorites:
+        favorites[uid] = [t for t in favorites[uid] if t != album_title]
+
+    # Save updated data
+    albums_to_keep["favorites"] = favorites
+    with open(ALBUM_PATH, "w") as f:
+        json.dump(albums_to_keep, f, indent=2)
+
+    return jsonify({"success": True}), 200
+
+
+@main.route("/rename_album/<album_title>", methods=["POST"])
+@login_required
+def rename_album(album_title):
+    """Rename an album across all entries and favorites, handling URL encoding."""
+    old_title = unquote(album_title).strip()
+    payload = request.get_json(silent=True) or {}
+    new_title = payload.get("new_title", "").strip()
+    if not new_title:
+        return jsonify({"status": "error", "message": "No new title provided"}), 400
+
+    # Load existing albums data
+    data = load_json(ALBUM_PATH)
+    favorites = data.get("favorites", {})
+
+    # Build updated mapping (including placeholder entries)
+    updated_map = {}
+    for key, value in data.items():
+        if key == "favorites":
+            continue
+        # placeholder album entry (key == value == old_title)
+        if key == old_title and value == old_title:
+            updated_map[new_title] = new_title
+        # file entries matching the old album title
+        elif value == old_title:
+            updated_map[key] = new_title
+        else:
+            updated_map[key] = value
+
+    # Update favorites for all users
+    for user_id, fav_list in favorites.items():
+        favorites[user_id] = [new_title if t == old_title else t for t in fav_list]
+
+    # Save updated data
+    result = dict(updated_map)
+    result["favorites"] = favorites
+    save_json(ALBUM_PATH, result)
+
+    return jsonify({"status": "success"}), 200
+

@@ -5,6 +5,11 @@
   <title>Albums</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/gallery.css') }}">
+  <!-- Edit-mode styles to show/hide icons based on .edit-mode -->
+  <style>
+    .edit-mode .delete-album-btn { display: block !important; }
+    .edit-mode .rename-album-btn { display: inline-block !important; }
+  </style>
 </head>
 <body>
   <div class="app-container">
@@ -25,10 +30,16 @@
         <h1>My Albums</h1>
         <div class="album-create-container">
           <button id="show-album-form" class="btn btn-primary">➕ Create Album</button>
-          <form id="album-form"
-                action="{{ url_for('main.create_album') }}"
-                method="post"
-                style="display: none; margin-top: 0.5rem;"
+          <button
+            id="toggle-edit-albums"
+            class="btn btn-secondary edit-albums-btn"
+            style="margin-left: 0.5rem;"
+          >✏️ Edit Albums</button>
+          <form
+            id="album-form"
+            action="{{ url_for('main.create_album') }}"
+            method="post"
+            style="display: none; margin-top: 0.5rem;"
           >
             <input
               type="text"
@@ -46,7 +57,20 @@
 
       <main class="album-grid">
         {% for album in albums_data %}
-          <a href="{{ url_for('main.view_album', album_title=album.title|urlencode) }}" class="album-card">
+          <a
+            href="{{ url_for('main.view_album', album_title=album.title) }}"
+            class="album-card"
+            style="position: relative;"
+          >
+            <!-- Delete button (hidden until edit mode) -->
+            <button
+              type="button"
+              class="delete-album-btn"
+              data-album="{{ album.title }}"
+              data-delete-url="{{ url_for('main.delete_album', album_title=album.title) }}"
+              style="position: absolute; top: 0.5rem; right: 0.5rem; display: none; font-size: 1.25rem; background: none; border: none; cursor: pointer; color: red;"
+            >❌</button>
+
             <div class="album-preview">
               {# Show up to 3 thumbnails, hide all but first by default #}
               {% for thumb in album.thumbnails[:3] %}
@@ -57,8 +81,19 @@
                 >
               {% endfor %}
             </div>
+
             <div class="album-info">
-              <h3>{{ album.title }}</h3>
+              <h3>
+                <span class="album-title">{{ album.title }}</span>
+                <!-- Rename button (hidden until edit mode) -->
+                <button
+                  type="button"
+                  class="rename-album-btn"
+                  data-album="{{ album.title }}"
+                  data-rename-url="{{ url_for('main.rename_album', album_title=album.title) }}"
+                  style="display: none; background: none; border: none; cursor: pointer; margin-left: 0.5rem; font-size: 1rem;"
+                >✏️</button>
+              </h3>
               <p>{{ album.photos }} photos · {{ album.videos }} videos</p>
               <button
                 class="favorite-toggle {% if album.title in favorites %}favorited{% endif %}"
@@ -79,21 +114,94 @@
   <script src="{{ url_for('static', filename='js/gallery.js') }}"></script>
   <script>
     document.addEventListener("DOMContentLoaded", function() {
-      const showBtn = document.getElementById("show-album-form");
-      const form    = document.getElementById("album-form");
-      const cancel  = document.getElementById("cancel-album-form");
+      const showBtn    = document.getElementById("show-album-form");
+      const toggleBtn  = document.getElementById("toggle-edit-albums");
+      const form       = document.getElementById("album-form");
+      const cancel     = document.getElementById("cancel-album-form");
+      let editMode     = false;
 
-      showBtn.addEventListener("click", function() {
+      const deleteBtns = document.querySelectorAll(".delete-album-btn");
+      const renameBtns = document.querySelectorAll(".rename-album-btn");
+
+      // Create‐album toggle
+      showBtn.addEventListener("click", () => {
         form.style.display = form.style.display === "none" ? "flex" : "none";
-        if (form.style.display === "flex") {
-          form.querySelector("input").focus();
-        }
+        if (form.style.display === "flex") form.querySelector("input").focus();
+      });
+      cancel.addEventListener("click", () => {
+        form.style.display = "none";
       });
 
-      cancel.addEventListener("click", function() {
-        form.style.display = "none";
+      // Toggle edit mode
+      toggleBtn.addEventListener("click", () => {
+        editMode = !editMode;
+        toggleBtn.textContent = editMode ? "Done Editing" : "✏️ Edit Albums";
+        document.body.classList.toggle("edit-mode", editMode);
+        deleteBtns.forEach(btn => btn.style.display = editMode ? "block" : "none");
+        renameBtns.forEach(btn => btn.style.display = editMode ? "inline-block" : "none");
+      });
+
+      // Delete handler
+      deleteBtns.forEach(btn => {
+        btn.addEventListener("click", function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const album = btn.dataset.album;
+          if (confirm(`Are you sure you want to delete album "${album}"?`)) {
+            fetch(btn.dataset.deleteUrl, { method: "POST" })
+              .then(res => {
+                if (res.ok) btn.closest(".album-card").remove();
+                else alert("Failed to delete album.");
+              })
+              .catch(() => alert("Error deleting album."));
+          }
+        });
+      });
+
+      // Rename handler
+      renameBtns.forEach(btn => {
+        btn.addEventListener("click", function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const oldName = btn.dataset.album;
+          const newName = prompt(`Enter new name for album "${oldName}":`, oldName);
+          if (newName && newName !== oldName) {
+            fetch(btn.dataset.renameUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ new_title: newName })
+            })
+              .then(res => {
+                if (res.ok) {
+                  const encodedOld = encodeURIComponent(oldName);
+                  const encodedNew = encodeURIComponent(newName);
+                  // Update rename button
+                  btn.dataset.album = newName;
+                  btn.dataset.renameUrl = btn.dataset.renameUrl.replace(encodedOld, encodedNew);
+                  // Update delete button
+                  const deleteBtn = btn.closest(".album-card").querySelector(".delete-album-btn");
+                  deleteBtn.dataset.album = newName;
+                  deleteBtn.dataset.deleteUrl = deleteBtn.dataset.deleteUrl.replace(encodedOld, encodedNew);
+                  // Update link href
+                  const card = btn.closest("a.album-card");
+                  const oldHref = card.getAttribute("href");
+                  const newHref = oldHref.replace(encodedOld, encodedNew);
+                  card.setAttribute("href", newHref);
+                  // Update displayed title
+                  const titleEl = btn.closest(".album-info").querySelector(".album-title");
+                  titleEl.textContent = newName;
+                } else {
+                  alert("Failed to rename album.");
+                }
+              })
+              .catch(() => alert("Error renaming album."));
+          }
+        });
       });
     });
   </script>
+
+  <!-- Load album action logic -->
+  <script src="{{ url_for('static', filename='js/albumActions.js') }}"></script>
 </body>
 </html>

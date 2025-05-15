@@ -8,7 +8,6 @@
 </head>
 <body>
   <div class="app-container">
-    <!-- Sidebar Navigation -->
     <aside class="sidebar">
       <h2 class="sidebar-heading">Media</h2>
       <nav>
@@ -21,69 +20,95 @@
       </nav>
     </aside>
 
-    <!-- Main Content -->
     <div class="layout-wrapper content">
       <header class="page-header">
         <h1>{{ album_title }}</h1>
         <a href="{{ url_for('main.albums') }}" class="btn btn-secondary">← Back to Albums</a>
       </header>
 
-      <main class="gallery-grid">
+      <main class="image-gallery-grid">
         {% for item in media_items %}
+        <div class="media-card">
           <figure class="gallery-item card">
+
             {% if item.type == 'video' %}
-              <div class="media-wrapper">
-                <img
-                  src="{{ url_for('main.thumbnail', filename=item.thumb_filename) }}"
-                  alt="Thumbnail for {{ item.filename }}"
-                  class="clickable"
-                  data-full="{{ url_for('main.uploaded_file', filename=item.filename) }}"
-                  data-type="video"
-                  onerror="handleError(this)">
-                <div class="play-overlay" aria-hidden="true">►</div>
-              </div>
-            {% else %}
+            <div class="media-wrapper">
+              <img
+                src="{{ url_for('main.thumbnail', filename=item.thumb.split('/')[-1]) }}"
+                alt="Thumbnail for {{ item.filename }}"
+                class="clickable"
+                data-full="{{ url_for('main.uploaded_file', filename=item.filename) }}"
+                data-type="video"
+                onerror="handleError(this)" {# Assumes handleError is in gallery.js and item.thumb is valid #}
+              >
+              <div class="play-overlay" aria-hidden="true">►</div>
+            </div>
+            {% else %} {# This is the else for 'if item.type == 'video'' #}
+            <div class="media-wrapper">
               <img
                 src="{{ url_for('main.uploaded_file', filename=item.filename) }}"
                 alt="{{ item.description or item.filename }}"
                 class="clickable"
                 data-full="{{ url_for('main.uploaded_file', filename=item.filename) }}"
                 data-type="image"
-                onerror="handleError(this)">
-            {% endif %}
+                onerror="handleError(this)" {# Assumes handleError is in gallery.js #}
+              >
+            </div>
+            {% endif %} {# This endif closes 'if item.type == 'video'' #}
 
             <div class="caption">
-              {% if item.description %}
-                <p class="description">{{ item.description }}</p>
-              {% endif %}
+              <form action="{{ url_for('main.update_description', filename=item.filename) }}" method="post" class="desc-form">
+                <textarea name="description" placeholder="Add a description..." rows="2">{{ item.description }}</textarea>
+                <button type="submit" class="btn btn-secondary">💾 Save</button>
+              </form>
 
-              {% if item.tags %}
-                <div class="tags">
+              <div class="tags">
+                {# Example: Display existing tags if available
+                {% if item.tags %}
                   {% for tag in item.tags %}
                     <span class="tag-label">
-                      📌 <a href="{{ url_for('main.index', tag=tag|lower) }}">{{ tag }}</a>
+                      <a href="{{ url_for('main.index', tag=tag|lower) }}">📌 {{ tag }}</a>
                     </span>
                   {% endfor %}
-                </div>
-              {% endif %}
+                {% endif %}
+                #}
+                <form action="{{ url_for('main.add_tag', filename=item.filename) }}" method="post" class="add-tag-form" style="margin-top: 0.25rem;">
+                  <input type="text" name="tag" placeholder="Add tag..." style="width: 60%;" maxlength="30">
+                  <button type="submit" class="btn btn-icon">➕</button>
+                </form>
+              </div>
 
-              {% if item.comments %}
-                <div class="comments">
-                  {% for comment in item.comments %}
-                    <p class="comment-item">{{ comment }}</p>
-                  {% endfor %}
-                </div>
-              {% endif %}
-            </div>
-          </figure>
-        {% else %}
-          <p class="empty">This album is empty.</p>
-        {% endfor %}
+              <p class="uploaded-by">Uploaded by {{ current_user.username }}</p>
+
+              <div class="comments">
+                {% if item.comments %} {# This is an 'if' for comments #}
+                  {% for comment in item.comments %} {# This is a 'for' loop for comments #}
+                  <p class="comment-item">{{ comment }}</p>
+                  {% endfor %} {# This 'endfor' closes the comments loop #}
+                {% endif %} {# This 'endif' closes 'if item.comments' #}
+              </div>
+
+              <form action="{{ url_for('main.add_comment', filename=item.filename) }}" method="post" class="add-comment-form">
+                <input type="hidden" name="owner_id" value="{{ current_user.id }}">
+                <input type="text" name="comment" placeholder="Add a comment..." style="width: 80%;" maxlength="200" required>
+                <button type="submit" class="btn btn-secondary">💬 Comment</button>
+              </form>
+
+              <div class="actions" style="margin-top: 0.5rem;">
+                <a href="{{ url_for('main.download_image', filename=item.filename) }}" class="btn btn-secondary" aria-label="Download {{ item.filename }}">
+                  ⬇️ Download
+                </a>
+                <form action="{{ url_for('main.delete_image', filename=item.filename) }}" method="post" style="display:inline;" onsubmit="return confirm('Delete {{ item.filename }}?');" class="inline-form">
+                  <button type="submit" class="btn btn-danger">🗑️ Delete</button>
+                </form>
+              </div>
+            </div> </figure> </div> {% else %} {# This is the 'else' for the main 'for item in media_items' loop #}
+        <p class="empty">This album is empty.</p>
+        {% endfor %} {# This 'endfor' closes the main 'for item in media_items' loop #}
       </main>
     </div>
   </div>
 
-  <!-- Lightbox Overlay (optional, reuses existing) -->
   <div id="preview" class="lightbox-overlay" style="display:none;" onclick="closePreview()">
     <button id="prevBtn" class="lightbox-arrow lightbox-arrow-left" aria-label="Previous">&#8592;</button>
     <div class="preview-box" onclick="event.stopPropagation()"></div>
@@ -92,6 +117,6 @@
   </div>
 
   <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/gallery.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/gallery.js') }}"></script> {# Ensure handleError(this) is defined in gallery.js if you use it #}
 </body>
 </html>
